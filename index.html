@@ -87,6 +87,7 @@ input[type=range]{width:100%;accent-color:var(--sel);height:28px}
 .h.tl{left:0;top:0;cursor:nwse-resize}.h.tr{left:100%;top:0;cursor:nesw-resize}.h.bl{left:0;top:100%;cursor:nesw-resize}.h.br{left:100%;top:100%;cursor:nwse-resize}
 .box .tag{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.65);color:#fff;font-size:12px;padding:4px 8px;border-radius:6px;white-space:nowrap;pointer-events:none}
 
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;max-width:min(92vw,440px);text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 footer{padding-block:0 32px;color:var(--muted);font-size:13px}
 footer p{margin:0 0 4px;max-width:70ch}
 
@@ -141,7 +142,8 @@ footer p{margin:0 0 4px;max-width:70ch}
             <input id="fabricFile" type="file" accept="image/*">
           </label>
         </div>
-        <p class="hint">Photograph the fabric flat, in daylight, filling the frame.</p>
+        <label class="btn ghost" for="fabricFile" style="text-align:center">Upload fabric photo</label>
+        <p class="hint">Photograph the fabric flat, in daylight, filling the frame. If upload does not open, open this link in Chrome or Safari instead of inside WhatsApp or Instagram.</p>
         <div class="range">
           <div class="top"><label for="patSize">Pattern size</label><output id="patOut"></output></div>
           <input type="range" id="patSize" min="50" max="520" step="5">
@@ -201,6 +203,7 @@ footer p{margin:0 0 4px;max-width:70ch}
   </footer>
 </div>
 
+<div class="toast" id="toast" role="status" hidden></div>
 <div class="overlay" id="overlay" hidden>
   <img id="shot" alt="Curtain preview picture">
   <p>Press and hold the picture to save or share it.</p>
@@ -501,11 +504,17 @@ function syncPat(){$('patSize').value=state.patSize;$('patOut').textContent=stat
 $('patSize').oninput=e=>{state.patSize=+e.target.value;syncPat();schedule()};
 
 function loadImage(file,cb){
-  if(!file)return;const fr=new FileReader();
-  fr.onload=()=>{const img=new Image();img.onload=()=>cb(img);img.onerror=()=>alertMsg('That file could not be read as a picture. Try a JPG or PNG photo.');img.src=fr.result};
-  fr.readAsDataURL(file);
+  if(!file)return;
+  const heic=/hei[cf]/i.test(file.type)||/\.hei[cf]$/i.test(file.name||'');
+  const fail=()=>alertMsg(heic?'This phone photo is in HEIC format, which the browser cannot open. Take a screenshot of the photo and upload the screenshot, or set the camera to "Most compatible".':'That file could not be opened as a picture. Please try a JPG or PNG photo.');
+  alertMsg('Loading photo…');
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{try{cb(img);alertMsg('Photo added.')}catch(err){fail()}URL.revokeObjectURL(url)};
+  img.onerror=()=>{URL.revokeObjectURL(url);
+    if(window.createImageBitmap)createImageBitmap(file).then(bm=>{const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;c.getContext('2d').drawImage(bm,0,0);cb(c);alertMsg('Photo added.')}).catch(fail);else fail()};
+  img.src=url;
 }
-function alertMsg(m){$('summary').textContent=m}
+let toastT=0;function alertMsg(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,m.length>40?7000:2500)}
 let upCount=0;
 $('fabricFile').onchange=e=>{
   loadImage(e.target.files[0],img=>{
