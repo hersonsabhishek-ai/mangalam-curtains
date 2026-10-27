@@ -503,16 +503,22 @@ SAMPLES.forEach(f=>fabSwatch(f));
 function syncPat(){$('patSize').value=state.patSize;$('patOut').textContent=state.patSize<110?'Small':state.patSize<220?'Medium':state.patSize<360?'Large':'Extra large'}
 $('patSize').oninput=e=>{state.patSize=+e.target.value;syncPat();schedule()};
 
+let heicLib=null;
+function loadScript(src){return new Promise((ok,no)=>{const sc=document.createElement('script');sc.src=src;sc.onload=ok;sc.onerror=no;document.head.append(sc)})}
+function getHeic(){
+  if(!heicLib)heicLib=loadScript('heic2any.min.js').catch(()=>loadScript('https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js')).then(()=>window.heic2any);
+  return heicLib;
+}
+function decode(blob){return new Promise((ok,no)=>{const url=URL.createObjectURL(blob),img=new Image();img.onload=()=>{ok(img);URL.revokeObjectURL(url)};img.onerror=()=>{URL.revokeObjectURL(url);no()};img.src=url})}
 function loadImage(file,cb){
   if(!file)return;
   const heic=/hei[cf]/i.test(file.type)||/\.hei[cf]$/i.test(file.name||'');
-  const fail=()=>alertMsg(heic?'This phone photo is in HEIC format, which the browser cannot open. Take a screenshot of the photo and upload the screenshot, or set the camera to "Most compatible".':'That file could not be opened as a picture. Please try a JPG or PNG photo.');
+  const fail=m=>alertMsg(m||'That file could not be opened as a picture. Please try a JPG or PNG photo.');
+  const viaHeic=()=>{alertMsg('Converting phone photo…');return getHeic().then(h=>h({blob:file,toType:'image/jpeg',quality:.9})).then(r=>decode(Array.isArray(r)?r[0]:r))};
   alertMsg('Loading photo…');
-  const url=URL.createObjectURL(file),img=new Image();
-  img.onload=()=>{try{cb(img);alertMsg('Photo added.')}catch(err){fail()}URL.revokeObjectURL(url)};
-  img.onerror=()=>{URL.revokeObjectURL(url);
-    if(window.createImageBitmap)createImageBitmap(file).then(bm=>{const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;c.getContext('2d').drawImage(bm,0,0);cb(c);alertMsg('Photo added.')}).catch(fail);else fail()};
-  img.src=url;
+  (heic?viaHeic():decode(file).catch(()=>window.createImageBitmap?createImageBitmap(file).then(bm=>{const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;c.getContext('2d').drawImage(bm,0,0);return c}).catch(viaHeic):viaHeic()))
+    .then(img=>{cb(img);alertMsg('Photo added.')})
+    .catch(()=>fail(heic?'This HEIC photo could not be converted. Take a screenshot of it and upload the screenshot instead.':''));
 }
 let toastT=0;function alertMsg(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,m.length>40?7000:2500)}
 let upCount=0;
