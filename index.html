@@ -40,6 +40,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,6vw,40px);lin
 .pbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
 .summary{margin:0;font-size:13px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .btn{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:999px;padding:8px 14px;background:var(--sel);color:var(--sel-fg);cursor:pointer;flex:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.two .btn{display:flex;align-items:center;justify-content:center;gap:6px;text-align:center}.vh{position:absolute;width:1px;height:1px;opacity:0}
 .btn.ghost{background:var(--chip);color:var(--fg)}
 .btn:focus-visible,.chip:focus-visible,.sw:focus-visible,.seg button:focus-visible,.upload:focus-within{outline:3px solid var(--accent);outline-offset:2px}
 
@@ -142,7 +143,7 @@ footer p{margin:0 0 4px;max-width:70ch}
             <input id="fabricFile" type="file" accept="image/*">
           </label>
         </div>
-        <label class="btn ghost" for="fabricFile" style="text-align:center">Upload fabric photo</label>
+        <div class="two"><label class="btn" for="fabricCam"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label><label class="btn ghost" for="fabricFile">From gallery</label></div><input id="fabricCam" class="vh" type="file" accept="image/*" capture="environment">
         <p class="hint">Photograph the fabric flat, in daylight, filling the frame. If upload does not open, open this link in Chrome or Safari instead of inside WhatsApp or Instagram.</p>
         <div class="range">
           <div class="top"><label for="patSize">Pattern size</label><output id="patOut"></output></div>
@@ -168,7 +169,7 @@ footer p{margin:0 0 4px;max-width:70ch}
           <button type="button" id="roomSample" data-v="sample">Sample room</button>
           <button type="button" id="roomPhoto" data-v="photo">My window photo</button>
         </div>
-        <label class="btn ghost" for="roomFile" id="roomUpload" style="text-align:center" hidden>Choose a photo of your window<input id="roomFile" type="file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0"></label>
+        <div class="two" id="roomUpload" hidden><label class="btn" for="roomCam"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label><label class="btn ghost" for="roomFile">From gallery</label></div><input id="roomFile" class="vh" type="file" accept="image/*"><input id="roomCam" class="vh" type="file" accept="image/*" capture="environment">
         <button class="btn ghost" type="button" id="editBtn" hidden>Adjust curtain area</button>
         <div id="lengthRow">
           <p class="lbl">Length</p>
@@ -557,10 +558,8 @@ const markRoom=seg('roomSeg','room',roomUI);seg('lenSeg','len');seg('sheerSeg','
 function roomUI(){
   const ph=state.room==='photo';
   $('roomUpload').hidden=!ph;$('editBtn').hidden=!(ph&&state.photo);$('lengthRow').hidden=ph;
-  $('roomUpload').firstChild.textContent=state.photo?'Choose a different photo':'Choose a photo of your window';
   const off=ph&&state.photo;$('wallNote').hidden=!off;$('wallStep').classList.toggle('off',!!off);
   if(!ph)setEditing(false);
-  if(ph&&!state.photo)$('roomFile').click();
 }
 $('roomFile').onchange=e=>{
   loadImage(e.target.files[0],img=>{
@@ -588,6 +587,7 @@ $('open').value=Math.round(state.open*100);$('openOut').textContent=$('open').va
 $('saveBtn').onclick=()=>{try{$('shot').src=cv.toDataURL('image/jpeg',.92);$('overlay').hidden=false}catch(err){alertMsg('Could not make a picture. Take a screenshot instead.')}};
 $('closeShot').onclick=()=>$('overlay').hidden=true;
 
+$('fabricCam').onchange=$('fabricFile').onchange;$('roomCam').onchange=$('roomFile').onchange;
 syncPat();markFab();markWall();markStyle();roomUI();
 window.addEventListener('resize',schedule);
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(schedule);
