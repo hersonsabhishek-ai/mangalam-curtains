@@ -453,7 +453,7 @@ function drawHardware(c,A,st,ps,k,top){
 }
 
 /* ---------- render ---------- */
-let cssW=0,cssH=0;
+let cssW=0,cssH=0,exportW=0;
 function fit(){
   const{W,H}=dims(),stage=$('stage');
   const avail=stage.clientWidth||320;
@@ -464,8 +464,9 @@ function fit(){
 }
 function render(){
   fit();
-  const{W,H}=dims(),dpr=Math.min(2,window.devicePixelRatio||1);
-  cv.width=layer.width=Math.round(cssW*dpr);cv.height=layer.height=Math.round(cssH*dpr);
+  const{W,H}=dims(),dpr=Math.min(3,window.devicePixelRatio||1);
+  const bw=exportW||cssW*dpr;cv.width=layer.width=Math.round(bw);cv.height=layer.height=Math.round(bw*H/W);
+  ctx.imageSmoothingQuality=lctx.imageSmoothingQuality='high';
   const S=cv.width/W;
   ctx.setTransform(S,0,0,S,0,0);ctx.clearRect(0,0,W,H);
   if(state.room==='photo'&&state.photo){const p=state.photo,r=Math.max(W/p.width,H/p.height),sw=W/r,sh=H/r;ctx.drawImage(p,(p.width-sw)/2,(p.height-sh)/2,sw,sh,0,0,W,H)}
@@ -515,7 +516,7 @@ function loadImage(file,cb){
   if(!file)return;
   const heic=/hei[cf]/i.test(file.type)||/\.hei[cf]$/i.test(file.name||'');
   const fail=m=>alertMsg(m||'That file could not be opened as a picture. Please try a JPG or PNG photo.');
-  const viaHeic=()=>{alertMsg('Converting phone photo…');return getHeic().then(h=>h({blob:file,toType:'image/jpeg',quality:.9})).then(r=>decode(Array.isArray(r)?r[0]:r))};
+  const viaHeic=()=>{alertMsg('Converting phone photo…');return getHeic().then(h=>h({blob:file,toType:'image/jpeg',quality:.95})).then(r=>decode(Array.isArray(r)?r[0]:r))};
   alertMsg('Loading photo…');
   (heic?viaHeic():decode(file).catch(()=>window.createImageBitmap?createImageBitmap(file).then(bm=>{const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;c.getContext('2d').drawImage(bm,0,0);return c}).catch(viaHeic):viaHeic()))
     .then(img=>{cb(img);alertMsg('Photo added.')})
@@ -525,7 +526,7 @@ let toastT=0;function alertMsg(m){const t=$('toast');t.textContent=m;t.hidden=fa
 let upCount=0;
 $('fabricFile').onchange=e=>{
   loadImage(e.target.files[0],img=>{
-    const max=700,sc=Math.min(1,max/Math.max(img.width,img.height)),w=Math.round(img.width*sc),h=Math.round(img.height*sc);
+    const max=1600,sc=Math.min(1,max/Math.max(img.width,img.height)),w=Math.round(img.width*sc),h=Math.round(img.height*sc);
     // mirror-tile so the photo repeats without hard seams
     const c=document.createElement('canvas');c.width=w*2;c.height=h*2;const g=c.getContext('2d');
     g.drawImage(img,0,0,w,h);
@@ -563,7 +564,7 @@ function roomUI(){
 }
 $('roomFile').onchange=e=>{
   loadImage(e.target.files[0],img=>{
-    const max=1600,sc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    const max=2400,sc=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
     state.photo=c;state.room='photo';state.area={x:.2,y:.12,w:.6,h:.76};markRoom();roomUI();setEditing(true);schedule();
   });
   e.target.value='';
@@ -584,7 +585,7 @@ box.addEventListener('pointermove',e=>{if(!drag)return;const dx=(e.clientX-drag.
 $('open').oninput=e=>{state.open=e.target.value/100;$('openOut').textContent=e.target.value+'%';schedule()};
 $('open').value=Math.round(state.open*100);$('openOut').textContent=$('open').value+'%';
 
-$('saveBtn').onclick=()=>{try{$('shot').src=cv.toDataURL('image/jpeg',.92);$('overlay').hidden=false}catch(err){alertMsg('Could not make a picture. Take a screenshot instead.')}};
+$('saveBtn').onclick=()=>{try{exportW=2000;render();$('shot').src=cv.toDataURL('image/jpeg',.95);$('overlay').hidden=false}catch(err){alertMsg('Could not make a picture. Take a screenshot instead.')}finally{exportW=0;render()}};
 $('closeShot').onclick=()=>$('overlay').hidden=true;
 
 $('fabricCam').onchange=$('fabricFile').onchange;$('roomCam').onchange=$('roomFile').onchange;
